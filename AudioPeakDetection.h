@@ -80,6 +80,9 @@ enum {
     AudioPeakDetection_NUM_PARAMS
 };
 
+static_assert(AudioPeakDetection_CREATE_MARKERS_BUTTON + 1 == AudioPeakDetection_NUM_PARAMS,
+        "Parameter enumeration and count are out of sync.");
+
 enum {
     AUDIO_PEAK_DETECTOR_GROUP_START_DISK_ID = 1,
     AUDIO_PEAK_DETECTOR_MIN_SEPARATION_DISK_ID,

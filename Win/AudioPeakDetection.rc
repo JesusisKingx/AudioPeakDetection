@@ -1,4 +1,4 @@
-
+#include "AE_Effect.h"
 
 
 
@@ -49,17 +49,17 @@ BEGIN
 	2L
 	0L, 
 
-	"MIB8",
-	"OLGe", 
-	0L,
-	4L,
-	1107296256L, 
+        "MIB8",
+        "OLGe",
+        0L,
+        4L,
+        PF_OutFlag_AUDIO_EFFECT_TOO | PF_OutFlag_AUDIO_FLOAT_ONLY | PF_OutFlag_WIDE_TIME_INPUT | PF_OutFlag_I_USE_AUDIO,
 
-	"MIB8",
-	"2LGe", 
-	0L,
-	4L,
-	0L, 
+        "MIB8",
+        "2LGe",
+        0L,
+        4L,
+        PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG,
 
 	"MIB8",
 	"ANMe",
