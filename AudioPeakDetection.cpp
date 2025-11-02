@@ -272,7 +272,9 @@ static PF_Err GlobalSetup(PF_InData* in_data,
 
         out_data->out_flags2 |= PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG;
 
-        err = RegisterWithHost(in_data);
+        if (err == PF_Err_NONE) {
+                (void)RegisterWithHost(in_data);
+        }
 
         return err;
 }
