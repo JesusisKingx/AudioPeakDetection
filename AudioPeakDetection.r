@@ -1,6 +1,14 @@
-/* AudioPeakDetectionPiPL.r  –  single‑source PiPL, ID 16000 */
+/* AudioPeakDetectionPiPL.r  –  single-source PiPL, ID 16000 */
 
-#include "AE_Effect.h"
+#include "AEConfig.h"
+
+/* Literal flag values mirrored from AE_Effect.h so the resource
+   script remains self-contained and does not require heavyweight headers. */
+#define PF_OutFlag_WIDE_TIME_INPUT                  (1L << 1)
+#define PF_OutFlag_I_USE_AUDIO                      (1L << 20)
+#define PF_OutFlag_AUDIO_FLOAT_ONLY                 (1L << 27)
+#define PF_OutFlag_AUDIO_EFFECT_TOO                 (1L << 30)
+#define PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG (1L << 3)
 
 resource 'PiPL' (16000)
 {

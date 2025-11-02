@@ -60,13 +60,17 @@ PF_Err RegisterWithHost(PF_InData* in_data)
                 return PF_Err_NONE;
         }
 
+        if (in_data->appl_id == 'PrMr') {
+                return PF_Err_NONE;
+        }
+
         AEGP_SuiteHandler suites(in_data->pica_basicP);
-        auto register_suite = suites.RegisterSuite5();
-        if (!register_suite) {
+        auto utility_suite = suites.UtilitySuite3();
+        if (!utility_suite) {
                 return PF_Err_BAD_CALLBACK_PARAM;
         }
 
-        const A_Err ae_err = register_suite->AEGP_RegisterWithAEGP(
+        const A_Err ae_err = utility_suite->AEGP_RegisterWithAEGP(
                 nullptr,
                 STR(StrID_Name),
                 &g_my_plugin_id);
