@@ -1,0 +1,27 @@
+# Visual Studio metadata and caches
+.vs/
+*.VC.db
+*.opendb
+*.suo
+*.user
+ipch/
+
+# Build outputs
+x64/
+Win32/
+*.obj
+*.pdb
+*.idb
+*.ilk
+*.log
+*.tlog
+*.lastbuildstate
+*.cache
+*.tmp
+
+# Generated PiPL intermediates
+*.rr
+*.rrc
+
+# Misc
+*.aps
