@@ -1,4 +1,6 @@
-﻿/* AudioPeakDetectionPiPL.r  –  single‑source PiPL, ID 16000 */
+/* AudioPeakDetectionPiPL.r  –  single‑source PiPL, ID 16000 */
+
+#include "AE_Effect.h"
 
 resource 'PiPL' (16000)
 {
@@ -35,9 +37,14 @@ resource 'PiPL' (16000)
         /* [9] info flags */
         AE_Effect_Info_Flags { 0 },
 
-        /* [10] global out‑flags: deep‑color + audio */
-        AE_Effect_Global_OutFlags { 0x42000000 },
-        AE_Effect_Global_OutFlags_2 { 0 },
+        /* [10] global out‑flags: audio effect with float audio + wide time */
+        AE_Effect_Global_OutFlags {
+            PF_OutFlag_AUDIO_EFFECT_TOO |
+            PF_OutFlag_AUDIO_FLOAT_ONLY |
+            PF_OutFlag_WIDE_TIME_INPUT |
+            PF_OutFlag_I_USE_AUDIO
+        },
+        AE_Effect_Global_OutFlags_2 { PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG },
 
         /* [11] match‑name */
         AE_Effect_Match_Name { "ADBE AudioPeakDetector" },

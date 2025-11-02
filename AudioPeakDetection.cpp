@@ -46,8 +46,38 @@ constexpr int kHopSize = kFFTSize / 2;
 constexpr int kThresholdWindow = 8;
 constexpr PF_FpLong kLoudnessThreshold = AudioPeakDetection_LOUDNESS_THRESHOLD_PERCENT;
 constexpr A_long kProgressMax = 100;
+constexpr A_long kExpectedParamCount = AudioPeakDetection_NUM_PARAMS;
 
 static AEGP_PluginID g_my_plugin_id = 0;
+
+PF_Err RegisterWithHost(PF_InData* in_data)
+{
+        if (!in_data || !in_data->pica_basicP) {
+                return PF_Err_INVALID_CALLBACK;
+        }
+
+        if (g_my_plugin_id != 0) {
+                return PF_Err_NONE;
+        }
+
+        AEGP_SuiteHandler suites(in_data->pica_basicP);
+        auto register_suite = suites.RegisterSuite5();
+        if (!register_suite) {
+                return PF_Err_BAD_CALLBACK_PARAM;
+        }
+
+        const A_Err ae_err = register_suite->AEGP_RegisterWithAEGP(
+                nullptr,
+                STR(StrID_Name),
+                &g_my_plugin_id);
+
+        if (ae_err != A_Err_NONE) {
+                g_my_plugin_id = 0;
+                return static_cast<PF_Err>(ae_err);
+        }
+
+        return PF_Err_NONE;
+}
 
 inline PF_Err ReportProgress(PF_InData* in_data, A_long current, A_long total)
 {
@@ -222,115 +252,149 @@ static PF_Err About(PF_InData* in_data,
 
 /* ------------------------------------------------------ GlobalSetup */
 static PF_Err GlobalSetup(PF_InData* in_data,
-	PF_OutData* out_data,
-	PF_ParamDef* params[],
-	PF_LayerDef* output)
+        PF_OutData* out_data,
+        PF_ParamDef* params[],
+        PF_LayerDef* output)
 {
-	PF_Err err = PF_Err_NONE;
+        PF_Err err = PF_Err_NONE;
 
-	out_data->my_version = PF_VERSION(
-		MAJOR_VERSION,
+        out_data->my_version = PF_VERSION(
+                MAJOR_VERSION,
 		MINOR_VERSION,
 		BUG_VERSION,
 		STAGE_VERSION,
 		BUILD_VERSION);
 
-	out_data->out_flags = PF_OutFlag_WIDE_TIME_INPUT |
-		PF_OutFlag_I_USE_AUDIO |
-		PF_OutFlag_AUDIO_EFFECT_TOO |
-		PF_OutFlag_AUDIO_FLOAT_ONLY;
+        out_data->out_flags = PF_OutFlag_WIDE_TIME_INPUT |
+                PF_OutFlag_I_USE_AUDIO |
+                PF_OutFlag_AUDIO_EFFECT_TOO |
+                PF_OutFlag_AUDIO_FLOAT_ONLY;
 
-	out_data->out_flags2 |= PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG;
+        out_data->out_flags2 |= PF_OutFlag2_PARAM_GROUP_START_COLLAPSED_FLAG;
 
-	g_my_plugin_id = 0;
+        if (err == PF_Err_NONE) {
+                (void)RegisterWithHost(in_data);
+        }
 
-	return err;
+        return err;
 }
 
 /* ----------------------------------------------------- ParamsSetup */
 static PF_Err ParamsSetup(PF_InData* in_data,
-	PF_OutData* out_data,
-	PF_ParamDef* params[],
-	PF_LayerDef* output)
+        PF_OutData* out_data,
+        PF_ParamDef* params[],
+        PF_LayerDef* output)
 {
-	PF_Err err = PF_Err_NONE;
-	PF_ParamDef def{};
+        PF_Err err = PF_Err_NONE;
+        PF_ParamDef def{};
+        A_long param_index = 0;
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_LAYER("Audio Source", PF_LayerDefault_MYSELF, 0);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_LAYER("Audio Source", PF_LayerDefault_MYSELF, 0);
+        if (!err) {
+                ++param_index;
+        }
 
-	AEFX_CLR_STRUCT(def);
-	def.param_type = PF_Param_GROUP_START;
-	PF_STRNNCPY(def.name, STR(StrID_Detection_Group_Name), sizeof(def.name));
-	def.flags = PF_ParamFlag_COLLAPSE_TWIRLY | PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
-	def.uu.id = AUDIO_PEAK_DETECTOR_GROUP_START_DISK_ID;
-	err = AddParam(in_data, -1, &def);
-	if (err != PF_Err_NONE) {
-		return err;
-	}
+        AEFX_CLR_STRUCT(def);
+        def.param_type = PF_Param_GROUP_START;
+        PF_STRNNCPY(def.name, STR(StrID_Detection_Group_Name), sizeof(def.name));
+        def.flags = PF_ParamFlag_COLLAPSE_TWIRLY | PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
+        def.uu.id = AUDIO_PEAK_DETECTOR_GROUP_START_DISK_ID;
+        if (!err) {
+                err = AddParam(in_data, param_index, &def);
+        }
+        if (err != PF_Err_NONE) {
+                return err;
+        }
+        ++param_index;
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(STR(StrID_Min_Gap_Slider_Name),
-		AudioPeakDetection_MIN_SEPARATION_MIN,
-		AudioPeakDetection_MIN_SEPARATION_MAX,
-		AudioPeakDetection_MIN_SEPARATION_MIN,
-		AudioPeakDetection_MIN_SEPARATION_MAX,
-		AudioPeakDetection_MIN_SEPARATION_DFLT,
-		PF_Precision_HUNDREDTHS,
-		0,
-		PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
-		AUDIO_PEAK_DETECTOR_MIN_SEPARATION_DISK_ID);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_FLOAT_SLIDERX(STR(StrID_Min_Gap_Slider_Name),
+                AudioPeakDetection_MIN_SEPARATION_MIN,
+                AudioPeakDetection_MIN_SEPARATION_MAX,
+                AudioPeakDetection_MIN_SEPARATION_MIN,
+                AudioPeakDetection_MIN_SEPARATION_MAX,
+                AudioPeakDetection_MIN_SEPARATION_DFLT,
+                PF_Precision_HUNDREDTHS,
+                0,
+                PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
+                AUDIO_PEAK_DETECTOR_MIN_SEPARATION_DISK_ID);
+        if (!err) {
+                ++param_index;
+        }
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(STR(StrID_Threshold_Multiplier_Slider_Name),
-		AudioPeakDetection_THRESHOLD_MULTIPLIER_MIN,
-		AudioPeakDetection_THRESHOLD_MULTIPLIER_MAX,
-		AudioPeakDetection_THRESHOLD_MULTIPLIER_MIN,
-		AudioPeakDetection_THRESHOLD_MULTIPLIER_MAX,
-		AudioPeakDetection_THRESHOLD_MULTIPLIER_DFLT,
-		PF_Precision_HUNDREDTHS,
-		0,
-		PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
-		AUDIO_PEAK_DETECTOR_THRESHOLD_MULTIPLIER_DISK_ID);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_FLOAT_SLIDERX(STR(StrID_Threshold_Multiplier_Slider_Name),
+                AudioPeakDetection_THRESHOLD_MULTIPLIER_MIN,
+                AudioPeakDetection_THRESHOLD_MULTIPLIER_MAX,
+                AudioPeakDetection_THRESHOLD_MULTIPLIER_MIN,
+                AudioPeakDetection_THRESHOLD_MULTIPLIER_MAX,
+                AudioPeakDetection_THRESHOLD_MULTIPLIER_DFLT,
+                PF_Precision_HUNDREDTHS,
+                0,
+                PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
+                AUDIO_PEAK_DETECTOR_THRESHOLD_MULTIPLIER_DISK_ID);
+        if (!err) {
+                ++param_index;
+        }
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(STR(StrID_Smoothing_Slider_Name),
-		AudioPeakDetection_SMOOTHING_MIN,
-		AudioPeakDetection_SMOOTHING_MAX,
-		AudioPeakDetection_SMOOTHING_MIN,
-		AudioPeakDetection_SMOOTHING_MAX,
-		static_cast<PF_FpShort>(AudioPeakDetection_SMOOTHING_DFLT),
-	PF_Precision_TENTHS,
-	PF_ValueDisplayFlag_PERCENT,
-	PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
-	AUDIO_PEAK_DETECTOR_SMOOTHING_DISK_ID);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_FLOAT_SLIDERX(STR(StrID_Smoothing_Slider_Name),
+                AudioPeakDetection_SMOOTHING_MIN,
+                AudioPeakDetection_SMOOTHING_MAX,
+                AudioPeakDetection_SMOOTHING_MIN,
+                AudioPeakDetection_SMOOTHING_MAX,
+                static_cast<PF_FpShort>(AudioPeakDetection_SMOOTHING_DFLT),
+                PF_Precision_TENTHS,
+                PF_ValueDisplayFlag_PERCENT,
+                PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE,
+                AUDIO_PEAK_DETECTOR_SMOOTHING_DISK_ID);
+        if (!err) {
+                ++param_index;
+        }
 
-	AEFX_CLR_STRUCT(def);
-	def.param_type = PF_Param_GROUP_END;
-	PF_STRNNCPY(def.name, STR(StrID_Detection_Group_Name), sizeof(def.name));
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
-	def.uu.id = AUDIO_PEAK_DETECTOR_GROUP_END_DISK_ID;
-	err = AddParam(in_data, -1, &def);
-	if (err != PF_Err_NONE) {
-		return err;
-	}
+        AEFX_CLR_STRUCT(def);
+        def.param_type = PF_Param_GROUP_END;
+        PF_STRNNCPY(def.name, STR(StrID_Detection_Group_Name), sizeof(def.name));
+        def.flags = PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
+        def.uu.id = AUDIO_PEAK_DETECTOR_GROUP_END_DISK_ID;
+        if (!err) {
+                err = AddParam(in_data, param_index, &def);
+        }
+        if (err != PF_Err_NONE) {
+                return err;
+        }
+        ++param_index;
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_BUTTON(STR(StrID_Analyze_Button_Name),
-		STR(StrID_Analyze_Button_Name),
-		0,
-		PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY,
-		AUDIO_PEAK_DETECTOR_ANALYZE_BUTTON_DISK_ID);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_BUTTON(STR(StrID_Analyze_Button_Name),
+                STR(StrID_Analyze_Button_Name),
+                0,
+                PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY,
+                AUDIO_PEAK_DETECTOR_ANALYZE_BUTTON_DISK_ID);
+        if (!err) {
+                ++param_index;
+        }
 
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_BUTTON(STR(StrID_Create_Markers_Button_Name),
-		STR(StrID_Create_Markers_Button_Name),
-		0,
-		PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY,
-		AUDIO_PEAK_DETECTOR_CREATE_MARKERS_BUTTON_DISK_ID);
+        AEFX_CLR_STRUCT(def);
+        PF_ADD_BUTTON(STR(StrID_Create_Markers_Button_Name),
+                STR(StrID_Create_Markers_Button_Name),
+                0,
+                PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY,
+                AUDIO_PEAK_DETECTOR_CREATE_MARKERS_BUTTON_DISK_ID);
+        if (!err) {
+                ++param_index;
+        }
 
-	out_data->num_params = AudioPeakDetection_NUM_PARAMS;
-	return err;
+        if (!err && param_index != kExpectedParamCount) {
+                err = PF_Err_BAD_CALLBACK_PARAM;
+        }
+
+        if (!err) {
+                out_data->num_params = param_index;
+        }
+
+        return err;
 }
 
 /* ---------------------------------------------------- SequenceSetup */
